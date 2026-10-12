@@ -1,3 +1,4 @@
+cat > backend/agents/indicators.py << 'PYEOF'
 """Agent 3 - Technical Indicator Agent (Phase 3).
 
 RSI(14), Stochastic, MACD, ATR - pure standard library.
@@ -7,7 +8,7 @@ Indicators describe conditions; they do not guarantee outcomes.
 
 from dataclasses import dataclass, field
 
-STRATEGY_VERSION = "indicator-agent-3.0.0"
+STRATEGY_VERSION = "indicator-agent-3.0.1"
 
 
 def _ohlc(c, long: str, short: str) -> float:
@@ -69,12 +70,19 @@ def stochastic(candles, k_period: int = 14, d_period: int = 3):
 
 
 def macd(closes: list[float], fast: int = 12, slow: int = 26, signal: int = 9):
-    """Returns (macd_line, macd_signal, macd_hist) or None if too short."""
+    """Returns (macd_line, macd_signal, macd_hist) or None if too short.
+
+    Both EMAs are aligned to the SAME candle index before subtraction;
+    the slow EMA (later seed) anchors the alignment.
+    """
     if len(closes) < slow + signal - 1:
         return None
     ef = _ema_series(closes, fast)
     es = _ema_series(closes, slow)
-    line = [a - b for a, b in zip(ef, es)]
+    line = []
+    for j in range(len(es)):
+        idx = slow - 1 + j
+        line.append(ef[idx - fast + 1] - es[j])
     sig = _ema_series(line, signal)
     m = line[-1]
     s = sig[-1]
@@ -153,3 +161,4 @@ class IndicatorAgent:
             r.explanations.append(
                 f"ATR14 {r.atr14:.5f} (~{pct:.2f}% of price): volatility measure.")
         return r
+PYEOF
