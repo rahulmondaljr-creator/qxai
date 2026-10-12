@@ -1,3 +1,4 @@
+cat > backend/tests/test_indicators.py << 'PYEOF'
 """Tests for Agent 3 - Technical Indicators."""
 
 from types import SimpleNamespace
@@ -37,7 +38,7 @@ def test_stochastic_close_at_high():
     candles = [_c(10, 0, 5) for _ in range(13)] + [_c(10, 0, 10) for _ in range(3)]
     k, d = stochastic(candles)
     assert k == 100.0
-    assert abs(d - (50 + 100 + 100) / 3) < 1e-9
+    assert d == 100.0
 
 
 def test_stochastic_no_range_never_nan():
@@ -78,3 +79,4 @@ def test_agent_reports_with_little_data():
     r = IndicatorAgent().analyze(candles, "EUR/USD", "M1")
     assert r.rsi14 is None and r.atr14 is None
     assert len(r.explanations) >= 3
+PYEOF
