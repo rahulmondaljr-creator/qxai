@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0d1117">
+<title>QX AI — Trading Analysis</title>
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --card2:#1c2330; --line:#2a3340;
+  --txt:#e6edf3; --mut:#8b949e;
+  --up:#16c784; --down:#ea3943; --wait:#f0b90b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:70px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.brand{font-weight:800;font-size:18px;letter-spacing:.5px}
+.brand span{color:var(--wait)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mut);display:inline-block;margin-right:5px}
+.dot.on{background:var(--up)}
+main{padding:14px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+select,button{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:15px}
+button{background:var(--wait);color:#111;font-weight:700;border:none;margin-top:8px}
+.decision{text-align:center;padding:22px 14px}
+.dec{font-size:34px;font-weight:900;letter-spacing:1px}
+.dec.UP{color:var(--up)} .dec.DOWN{color:var(--down)} .dec.NO_TRADE{color:var(--wait)}
+.meta{color:var(--mut);font-size:13px;margin-top:6px}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.badge.fresh{background:#123b2a;color:var(--up)} .badge.stale{background:#3b2f10;color:var(--wait)}
+.badge.vetoed{background:#3b1518;color:var(--down)}
+.scorebar{height:8px;background:var(--card2);border-radius:6px;margin-top:14px;position:relative;overflow:hidden}
+.scorebar i{position:absolute;top:0;bottom:0;left:50%;background:var(--mut)}
+h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+ul{list-style:none}
+li{font-size:13.5px;padding:7px 0;border-bottom:1px solid var(--line);color:#c9d4e0}
+li:last-child{border-bottom:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.kpi b{font-size:14px;display:block;margin-bottom:3px}
+.kpi span{font-size:12px;color:var(--mut)}
+.agent{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+.agent b{font-size:14px}.agent span{font-size:12px;color:var(--mut)}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;max-width:480px;margin:0 auto}
+nav button{background:none;border:none;color:var(--mut);font-size:11px;font-weight:600;padding:10px 0;flex:1}
+nav button.on{color:var(--wait)}
+.tab{display:none}.tab.on{display:block}
+.note{font-size:11.5px;color:var(--mut);text-align:center;margin-top:14px;line-height:1.5}
+#err{color:var(--down);font-size:13px;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">QX<span>AI</span></div>
+  <div><span class="dot" id="conn"></span><span style="font-size:12px;color:var(--mut)">engine</span></div>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <section class="tab on" id="tab-dash">
+    <div class="card">
+      <h4>Pair</h4>
+      <select id="pair"></select>
+      <button onclick="load()">ANALYZE NOW</button>
+      <div id="err"></div>
+    </div>
+
+    <div class="card decision" id="sigcard" style="display:none">
+      <div class="dec" id="d-dec">—</div>
+      <div class="meta" id="d-meta"></div>
+      <div class="meta" id="d-badge"></div>
+      <div class="scorebar"><i id="d-score"></i></div>
+      <div class="meta" id="d-scoretxt" style="margin-top:6px"></div>
+    </div>
+
+    <div class="grid" id="kpis" style="display:none">
+      <div class="kpi"><b id="k-trend">—</b><span>Trend</span></div>
+      <div class="kpi"><b id="k-struct">—</b><span>Structure</span></div>
+      <div class="kpi"><b id="k-risk">—</b><span>Risk</span></div>
+      <div class="kpi"><b id="k-data">—</b><span>Data</span></div>
+    </div>
+
+    <div class="card" id="whybox" style="display:none">
+      <h4>Decision reasons</h4>
+      <ul id="d-why"></ul>
+    </div>
+    <div class="card" id="indbox" style="display:none">
+      <h4>Indicators</h4>
+      <ul id="d-ind"></ul>
+    </div>
+    <div class="card" id="pabox" style="display:none">
+      <h4>Price action</h4>
+      <ul id="d-pa"></ul>
+    </div>
+    <p class="note">Analysis only — never a guarantee of profit.<br>v7.0.0 · rule-based score, not win probability</p>
+  </section>
+
+  <!-- AGENTS -->
+  <section class="tab" id="tab-agents">
+    <div id="agents"></div>
+    <p class="note">Agent status updates with each analysis.</p>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tab" id="tab-set">
+    <div class="card">
+      <h4>API address</h4>
+      <select id="apiurl">
+        <option value="http://localhost:8000">localhost:8000 (this phone)</option>
+      </select>
+    </div>
+    <div class="card">
+      <h4>About</h4>
+      <div style="font-size:13px;color:var(--mut);line-height:1.7">
+        QX AI — Advanced Trading Analysis Agent<br>
+        7 agents · Quotex live data · analysis only<br>
+        Watchlist: 20 real forex pairs
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" onclick="show('dash',this)">📊<br>Dashboard</button>
+  <button onclick="show('agents',this)">🤖<br>Agents</button>
+  <button onclick="show('set',this)">⚙️<br>Settings</button>
+</nav>
+
+<script>
+const PAIRS = ["USD/JPY","EUR/USD","EUR/JPY","GBP/USD","AUD/USD","USD/CAD","GBP/JPY","AUD/JPY","USD/CHF","EUR/GBP","EUR/AUD","GBP/AUD","EUR/CAD","GBP/CAD","AUD/CAD","CAD/JPY","CHF/JPY","GBP/CHF","EUR/CHF","AUD/CHF"];
+const sel = document.getElementById('pair');
+PAIRS.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o)});
+
+function show(t,btn){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.getElementById('tab-'+t).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function api(){return document.getElementById('apiurl').value}
+function li(arr){return arr.map(x=>`<li>${x}</li>`).join('')}
+
+async function load(){
+  const e=document.getElementById('err'); e.textContent='Analyzing…';
+  const pair=sel.value;
+  try{
+    const r=await fetch(`${api()}/api/signal?pair=${encodeURIComponent(pair)}&timeframe=M1`);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    e.textContent='';
+    document.getElementById('conn').classList.add('on');
+    // decision card
+    document.getElementById('sigcard').style.display='block';
+    const dec=document.getElementById('d-dec');
+    dec.textContent=s.decision; dec.className='dec '+s.decision;
+    const t=new Date(s.generated_at*1000).toLocaleTimeString();
+    document.getElementById('d-meta').textContent=`${s.pair} · M1 · ${t} · v${s.strategy_version}`;
+    document.getElementById('d-badge').innerHTML=
+      `<span class="badge ${s.data_freshness}">${s.data_freshness}</span>
+       <span class="badge ${s.risk_status}">risk ${s.risk_status}</span>`;
+    const pct=Math.max(-100,Math.min(100,s.score/7*100));
+    const bar=document.getElementById('d-score');
+    bar.style.background = s.score>=3?'var(--up)':(s.score<=-3?'var(--down)':'var(--wait)');
+    bar.style.width=Math.abs(pct)/2+'%';
+    bar.style.left = pct<0 ? (50-Math.abs(pct)/2)+'%' : '50%';
+    document.getElementById('d-scoretxt').textContent=`score ${s.score} / ±7`;
+    // kpis
+    document.getElementById('kpis').style.display='grid';
+    document.getElementById('k-trend').textContent=s.trend;
+    document.getElementById('k-struct').textContent=s.structure;
+    document.getElementById('k-risk').textContent=s.risk_status;
+    document.getElementById('k-data').textContent=s.data_freshness;
+    // lists
+    const boxes=[['whybox','d-why',s.explanation],['indbox','d-ind',s.indicator_summary],['pabox','d-pa',s.price_action_summary]];
+    boxes.forEach(([b,u,a])=>{ if(a&&a.length){document.getElementById(b).style.display='block';document.getElementById(u).innerHTML=li(a);} });
+    renderAgents(s);
+  }catch(err){
+    document.getElementById('conn').classList.remove('on');
+    e.textContent='Engine unreachable: '+err.message+' (is Termux server running?)';
+  }
+}
+
+function renderAgents(s){
+  const A=[
+    ['Market Data', s.data_freshness==='fresh'?'live':'stale'],
+    ['Trend', s.trend],
+    ['Indicators', s.indicator_summary.length?'ok':'n/a'],
+    ['Price Action', s.price_action_summary.length?'ok':'n/a'],
+    ['Structure', s.structure],
+    ['Risk', s.risk_status],
+    ['Validator', s.decision],
+  ];
+  document.getElementById('agents').innerHTML=A.map(([n,v])=>
+    `<div class="agent"><b>${n}</b><span>${v}</span></div>`).join('');
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
